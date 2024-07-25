@@ -11,4 +11,4 @@ cases:
     note: jwtencodesign/https://tools.ietf.org/html/rfc7515#appendix-A.1
     query: data.generated.p = x
     want_result:
-      - x: eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJhdWQiOiBbImJvYiIsICJzYXVsIl0sICJleHAiOiAxMzAwODE5MzgwLCAiaHR0cDovL2V4YW1wbGUuY29tL2lzX3Jvb3QiOiB0cnVlLCAiaXNzIjogImpvZSIsICJwcml2YXRlUGFyYW1zIjogeyJwcml2YXRlX29uZSI6ICJvbmUiLCAicHJpdmF0ZV90d28iOiAidHdvIn19.M10TcaFADr_JYAx7qJ71wktdyuN4IAnhWvVbgrZ5j_4
+      - x: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiBbImJvYiIsICJzYXVsIl0sICJleHAiOiAxMzAwODE5MzgwLCAiaHR0cDovL2V4YW1wbGUuY29tL2lzX3Jvb3QiOiB0cnVlLCAiaXNzIjogImpvZSIsICJwcml2YXRlUGFyYW1zIjogeyJwcml2YXRlX29uZSI6ICJvbmUiLCAicHJpdmF0ZV90d28iOiAidHdvIn19.OBh7NL0lRqn_QVZZswFo8juG6v6eUGSA0FDtZ6nUexQ

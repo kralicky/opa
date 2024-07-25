@@ -12,8 +12,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/open-policy-agent/opa/internal/jwx/jwa"
-	"github.com/open-policy-agent/opa/internal/jwx/jws"
+	"github.com/lestrrat-go/jwx/jwa"
+	"github.com/lestrrat-go/jwx/jws"
 	"github.com/open-policy-agent/opa/internal/jwx/jws/verify"
 	"github.com/open-policy-agent/opa/util"
 )
@@ -83,22 +83,22 @@ func (*DefaultVerifier) VerifyBundleSignature(sc SignaturesConfig, bvc *Verifica
 func verifyJWTSignature(token string, bvc *VerificationConfig) (*DecodedSignature, error) {
 	// decode JWT to check if the header specifies the key to use and/or if claims have the scope.
 
-	parts, err := jws.SplitCompact(token)
+	header, payload, _, err := jws.SplitCompactString(token)
 	if err != nil {
 		return nil, err
 	}
 
 	var decodedHeader []byte
-	if decodedHeader, err = base64.RawURLEncoding.DecodeString(parts[0]); err != nil {
+	if decodedHeader, err = base64.RawURLEncoding.DecodeString(string(header)); err != nil {
 		return nil, fmt.Errorf("failed to base64 decode JWT headers: %w", err)
 	}
 
-	var hdr jws.StandardHeaders
+	hdr := jws.NewHeaders()
 	if err := json.Unmarshal(decodedHeader, &hdr); err != nil {
 		return nil, fmt.Errorf("failed to parse JWT headers: %w", err)
 	}
 
-	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	payload, err = base64.RawURLEncoding.DecodeString(string(payload))
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func verifyJWTSignature(token string, bvc *VerificationConfig) (*DecodedSignatur
 	// first in the OPA config. If not found, then check the JWT kid.
 	keyID := bvc.KeyID
 	if keyID == "" {
-		keyID = hdr.KeyID
+		keyID = hdr.KeyID()
 	}
 	if keyID == "" {
 		// If header has no key id, check the deprecated key claim.

@@ -8,4 +8,4 @@ cases:
     note: jwtencodesignraw/text/plain media type
     query: data.generated.p = x
     want_result:
-      - x: eyJ0eXAiOiJ0ZXh0L3BsYWluIiwNCiAiYWxnIjoiSFMyNTYifQ.ZQ.oO8Vnc4Jv7-J231a1bEcQrgXfKbNW-kEvVY7BP1v5rM
+      - x: eyJhbGciOiJIUzI1NiIsInR5cCI6InRleHQvcGxhaW4ifQ.ZQ.HBLqqAsrdDRiWz666dUrTqsBjDNWIwhPVThW1LeFLwg

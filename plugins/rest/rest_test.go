@@ -31,9 +31,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lestrrat-go/jwx/jwa"
+	"github.com/lestrrat-go/jwx/jws"
 	"github.com/open-policy-agent/opa/bundle"
-	"github.com/open-policy-agent/opa/internal/jwx/jwa"
-	"github.com/open-policy-agent/opa/internal/jwx/jws"
 	"github.com/open-policy-agent/opa/internal/providers/aws"
 	"github.com/open-policy-agent/opa/keys"
 	"github.com/open-policy-agent/opa/logging"
@@ -902,7 +902,6 @@ func TestDoWithResponseHeaderTimeout(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-
 			baseURL, teardown := getTestServerWithTimeout(tc.d)
 			defer teardown()
 
@@ -2445,8 +2444,8 @@ func certTemplate() (*x509.Certificate, error) {
 }
 
 func createCert(template, parent *x509.Certificate, pub interface{}, parentPriv interface{}) (
-	cert *x509.Certificate, certPEM []byte, err error) {
-
+	cert *x509.Certificate, certPEM []byte, err error,
+) {
 	certDER, err := x509.CreateCertificate(rand.Reader, template, parent, pub, parentPriv)
 	if err != nil {
 		return
@@ -2505,12 +2504,12 @@ func (m *myPluginMock) NewClient(c Config) (*http.Client, error) {
 		defaultResponseHeaderTimeoutSeconds,
 	), nil
 }
+
 func (*myPluginMock) Prepare(*http.Request) error {
 	return nil
 }
 
 func TestOauth2ClientCredentialsGrantTypeWithKms(t *testing.T) {
-
 	// DER-encoded object from KMS as explained here: https://docs.aws.amazon.com/kms/latest/APIReference/API_Sign.html#API_Sign_ResponseSyntax
 	derEncodeSignature := []byte{48, 68, 2, 32, 84, 124, 17, 255, 68, 181, 189, 159, 77, 235, 242, 88, 85, 139, 84, 111, 204, 108, 235, 90, 128, 220, 247, 176, 215, 28, 188, 110, 19, 158, 137, 30, 2, 32, 88, 17, 176, 72, 157, 42, 1, 223, 69, 41, 225, 77, 121, 13, 117, 132, 146, 243, 45, 208, 207, 119, 233, 156, 96, 94, 192, 174, 136, 218, 206, 84}
 	// The signature representing the above object
@@ -2533,7 +2532,7 @@ func TestOauth2ClientCredentialsGrantTypeWithKms(t *testing.T) {
 	defer ots.stop()
 
 	kmsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var signRequest = &aws.KMSSignRequest{}
+		signRequest := &aws.KMSSignRequest{}
 		if r.Body != nil {
 			bodyBytes, err := io.ReadAll(r.Body)
 			if err != nil {
@@ -2605,7 +2604,6 @@ func newOauth2KmsClientCredentialsTestClient(t *testing.T, ts *testServer, ots *
 	t.Setenv(awsRegionEnvVar, awsRegionEnvVar)
 
 	client, err := New([]byte(config), map[string]*keys.Config{})
-
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}

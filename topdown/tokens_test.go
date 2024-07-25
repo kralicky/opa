@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lestrrat-go/jwx/jwk"
+	"github.com/lestrrat-go/jwx/jws"
 	"github.com/open-policy-agent/opa/ast"
-	"github.com/open-policy-agent/opa/internal/jwx/jwk"
-	"github.com/open-policy-agent/opa/internal/jwx/jws"
 	"github.com/open-policy-agent/opa/storage"
 	inmem "github.com/open-policy-agent/opa/storage/inmem/test"
 )
@@ -199,7 +199,6 @@ func TestParseTokenHeader(t *testing.T) {
 }
 
 func TestTopDownJWTEncodeSignES256(t *testing.T) {
-
 	const examplePayload = `{"iss":"joe",` + "\r\n" + ` "exp":1300819380,` + "\r\n" + ` "http://example.com/is_root":true}`
 	const es256Hdr = `{"alg":"ES256"}`
 	const ecKey = `{
@@ -217,7 +216,6 @@ func TestTopDownJWTEncodeSignES256(t *testing.T) {
 		input3 string
 		err    string
 	}{
-
 		"https://tools.ietf.org/html/rfc7515#appendix-A.3",
 		"`" + es256Hdr + "`",
 		"`" + examplePayload + "`",
@@ -236,7 +234,6 @@ func TestTopDownJWTEncodeSignES256(t *testing.T) {
 	}
 
 	compiler, err := compileRules(nil, tc.rules, nil)
-
 	if err != nil {
 		t.Errorf("%v: Compiler error: %v", tc.note, err)
 		return
@@ -292,22 +289,23 @@ func TestTopDownJWTEncodeSignES256(t *testing.T) {
 	}
 	// Verification
 
-	standardHeaders := &jws.StandardHeaders{}
+	standardHeaders := jws.NewHeaders()
 	err = json.Unmarshal([]byte(es256Hdr), standardHeaders)
 	if err != nil {
 		t.Fatal("Failed to parse header")
 	}
-	alg := standardHeaders.GetAlgorithm()
+	alg := standardHeaders.Algorithm()
 
 	keys, err := jwk.ParseString(ecKey)
 	if err != nil {
 		t.Fatal("Failed to parse JWK")
 	}
-	key, err := keys.Keys[0].Materialize()
-	if err != nil {
+	k, _ := keys.Get(0)
+	var key any
+	if err := k.Raw(&key); err != nil {
 		t.Fatal("Failed to create private key")
 	}
-	publicKey, err := jwk.GetPublicKey(key)
+	publicKey, err := jwk.PublicKeyOf(key)
 	if err != nil {
 		t.Fatalf("failed to get public key: %v", err)
 	}
@@ -323,7 +321,6 @@ func TestTopDownJWTEncodeSignES256(t *testing.T) {
 // TestTopDownJWTEncodeSignEC needs to perform all tests inline because we do not know the
 // expected values before hand
 func TestTopDownJWTEncodeSignES512(t *testing.T) {
-
 	const examplePayload = `{"iss":"joe",` + "\r\n" + ` "exp":1300819380,` + "\r\n" + ` "http://example.com/is_root":true}`
 	const es512Hdr = `{"alg":"ES512"}`
 	const ecKey = `{
@@ -341,7 +338,6 @@ func TestTopDownJWTEncodeSignES512(t *testing.T) {
 		input3 string
 		err    string
 	}{
-
 		"https://tools.ietf.org/html/rfc7515#appendix-A.4",
 		"`" + es512Hdr + "`",
 		"`" + examplePayload + "`",
@@ -363,7 +359,6 @@ func TestTopDownJWTEncodeSignES512(t *testing.T) {
 	tc := tests[0]
 
 	compiler, err := compileRules(nil, tc.rules, nil)
-
 	if err != nil {
 		t.Errorf("%v: Compiler error: %v", tc.note, err)
 		return
@@ -419,22 +414,23 @@ func TestTopDownJWTEncodeSignES512(t *testing.T) {
 	}
 	// Verification
 
-	standardHeaders := &jws.StandardHeaders{}
+	standardHeaders := jws.NewHeaders()
 	err = json.Unmarshal([]byte(es512Hdr), standardHeaders)
 	if err != nil {
 		t.Fatal("Failed to parse header")
 	}
-	alg := standardHeaders.GetAlgorithm()
+	alg := standardHeaders.Algorithm()
 
 	keys, err := jwk.ParseString(ecKey)
 	if err != nil {
 		t.Fatalf("Failed to parse JWK: %v", err)
 	}
-	key, err := keys.Keys[0].Materialize()
-	if err != nil {
+	k, _ := keys.Get(0)
+	var key any
+	if err := k.Raw(&key); err != nil {
 		t.Fatalf("Failed to create private key: %v", err)
 	}
-	publicKey, err := jwk.GetPublicKey(key)
+	publicKey, err := jwk.PublicKeyOf(key)
 	if err != nil {
 		t.Fatalf("Failed to get public key: %v", err)
 	}
@@ -471,7 +467,7 @@ func TestTopdownJWTEncodeSignECWithSeedReturnsSameSignature(t *testing.T) {
 	   "d":"jpsQnnGQmL-YBIffH1136cspYG6-0iY7X1fCE9-E9LI"
 	  }, x)`
 
-	encodedSigned := "eyJhbGciOiAiRVMyNTYifQ.eyJwYXkiOiAibG9hZCJ9.GRp6wIqDZuYnvQH50hnIy559LdrjUux76v1ynxX6lH0XtlgwreyR16x2JMnuElo79X3zUbqlWrZITICv86arew"
+	encodedSigned := "eyJhbGciOiJFUzI1NiJ9.eyJwYXkiOiAibG9hZCJ9.wjt4Z2Zze_ya_rGC9K6SGGnPXOrjWY05jW-luJSfLzCjCXGukt4xqthOHTu6abxquSW6aIFUyqujHqEgSZppuQ"
 	for i := 0; i < 10; i++ {
 		q := NewQuery(ast.MustParseBody(query)).
 			WithSeed(&cng{}).

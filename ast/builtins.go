@@ -190,6 +190,7 @@ var DefaultBuiltins = [...]*Builtin{
 	JWTVerifyHS256,
 	JWTVerifyHS384,
 	JWTVerifyHS512,
+	JWTVerifyEdDSA,
 	JWTDecodeVerify,
 	JWTEncodeSignRaw,
 	JWTEncodeSign,
@@ -2133,11 +2134,24 @@ var JWTVerifyHS512 = &Builtin{
 	Categories: tokensCat,
 }
 
+var JWTVerifyEdDSA = &Builtin{
+	Name:        "io.jwt.verify_eddsa",
+	Description: "Verifies if a EdDSA (secret) JWT signature is valid.",
+	Decl: types.NewFunction(
+		types.Args(
+			types.Named("jwt", types.S).Description("JWT token whose signature is to be verified"),
+			types.Named("secret", types.S).Description("plain text secret used to verify the signature"),
+		),
+		types.Named("result", types.B).Description("`true` if the signature is valid, `false` otherwise"),
+	),
+	Categories: tokensCat,
+}
+
 // Marked non-deterministic because it relies on time internally.
 var JWTDecodeVerify = &Builtin{
 	Name: "io.jwt.decode_verify",
 	Description: `Verifies a JWT signature under parameterized constraints and decodes the claims if it is valid.
-Supports the following algorithms: HS256, HS384, HS512, RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384 and PS512.`,
+Supports the following algorithms: HS256, HS384, HS512, RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512, and EdDSA.`,
 	Decl: types.NewFunction(
 		types.Args(
 			types.Named("jwt", types.S).Description("JWT token whose signature is to be verified and whose claims are to be checked"),
@@ -2411,6 +2425,7 @@ var CryptoX509ParseKeyPair = &Builtin{
 		types.Named("output", types.NewObject(nil, types.NewDynamicProperty(types.S, types.A))).Description("if key pair is valid, returns the tls.certificate(https://pkg.go.dev/crypto/tls#Certificate) as an object. If the key pair is invalid, nil and an error are returned."),
 	),
 }
+
 var CryptoX509ParseRSAPrivateKey = &Builtin{
 	Name:        "crypto.x509.parse_rsa_private_key",
 	Description: "Returns a JWK for signing a JWT from the given PEM-encoded RSA private key.",

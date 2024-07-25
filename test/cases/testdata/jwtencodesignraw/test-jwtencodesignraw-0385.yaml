@@ -8,4 +8,4 @@ cases:
     note: jwtencodesignraw/No Payload but Media Type is Plain
     query: data.generated.p = x
     want_result:
-      - x: eyJ0eXAiOiJ0ZXh0L3BsYWluIiwNCiAiYWxnIjoiSFMyNTYifQ..sXoGQMWwM-SmX495-htA7kndgbkwz1PnqsDeY275gnI
+      - x: eyJhbGciOiJIUzI1NiIsInR5cCI6InRleHQvcGxhaW4ifQ..tcV7QzSzUPEQVhTNvC6s3EKp3Of1kDV4GbAkAAkx7dA

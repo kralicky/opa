@@ -15,6 +15,7 @@ var supportedAlgos = map[string]struct{}{
 	"HS256": {}, "HS384": {}, "HS512": {},
 	"PS256": {}, "PS384": {}, "PS512": {},
 	"RS256": {}, "RS384": {}, "RS512": {},
+	"EdDSA": {},
 }
 
 // IsSupportedAlgorithm true if provided alg is supported

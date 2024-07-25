@@ -11,5 +11,5 @@ cases:
     note: jwtencodesignheadererrors/Empty JSON header Error
     query: data.generated.p = x
     strict_error: true
-    want_error: unsupported signature algorithm
+    want_error: "test-0.rego:4: eval_builtin_error: io.jwt.encode_sign_raw: unsupported signature algorithm"
     want_error_code: eval_builtin_error

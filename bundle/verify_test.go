@@ -26,7 +26,7 @@ func TestVerifyBundleSignature(t *testing.T) {
 	}{
 		"no_signatures":       {SignaturesConfig{}, nil, true, errors.New(".signatures.json: missing JWT (expected exactly one)")},
 		"multiple_signatures": {SignaturesConfig{Signatures: []string{signedTokenHS256, otherSignedTokenHS256}}, nil, true, errors.New(".signatures.json: multiple JWTs not supported (expected exactly one)")},
-		"invalid_token":       {SignaturesConfig{Signatures: []string{badToken}}, nil, true, errors.New("failed to split compact serialization")},
+		"invalid_token":       {SignaturesConfig{Signatures: []string{badToken}}, nil, true, errors.New("invalid number of segments")},
 		"invalid_token_header_base64": {
 			SignaturesConfig{Signatures: []string{badTokenHeaderBase64}},
 			NewVerificationConfig(nil, "", "", nil),
@@ -52,7 +52,6 @@ func TestVerifyBundleSignature(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-
 			_, err := VerifyBundleSignature(tc.input, tc.readerVerifyConfig)
 
 			if tc.wantErr {
@@ -162,44 +161,50 @@ yQjtQ8mbDOsiLLvh7wIDAQAB==
 		"actual_public_key_missing": {signedTokenHS256, map[string]*KeyConfig{}, "", "", true, errors.New("verification key corresponding to ID foo not found")},
 		"deprecated_key_id_claim": {
 			signedTokenWithDeprecatedKidClaimHS256,
-			map[string]*KeyConfig{"foo": {Key: "secret", Algorithm: "HS256"}}, "", "write", // check valid keyId in deprecated claim is used
+			map[string]*KeyConfig{"foo": {Key: "secret", Algorithm: "HS256"}},
+			"", "write", // check valid keyId in deprecated claim is used
 			false, nil,
 		},
 		"bad_public_key_algorithm": {
 			signedTokenHS256,
-			map[string]*KeyConfig{"foo": {Key: "somekey", Algorithm: "RS007"}}, "", "",
+			map[string]*KeyConfig{"foo": {Key: "somekey", Algorithm: "RS007"}},
+			"", "",
 			true, errors.New("unsupported signature algorithm: RS007"),
 		},
 		"public_key_with_valid_HS256_sign": {
 			signedTokenWithBarKidHS256,
-			map[string]*KeyConfig{"foo": {Key: "secret", Algorithm: "HS256"}}, "foo", "write", // check keyId in OPA config takes precedence
+			map[string]*KeyConfig{"foo": {Key: "secret", Algorithm: "HS256"}},
+			"foo", "write", // check keyId in OPA config takes precedence
 			false, nil,
 		},
 		"public_key_with_invalid_HS256_sign": {
 			signedTokenHS256,
-			map[string]*KeyConfig{"foo": {Key: "bad_secret", Algorithm: "HS256"}}, "", "",
+			map[string]*KeyConfig{"foo": {Key: "bad_secret", Algorithm: "HS256"}},
+			"", "",
 			true, errors.New("failed to verify message: failed to match hmac signature"),
 		},
 		"public_key_with_valid_RS256_sign": {
 			signedTokenRS256,
-			map[string]*KeyConfig{"foo": {Key: publicKeyValid, Algorithm: "RS256"}}, "", "write",
+			map[string]*KeyConfig{"foo": {Key: publicKeyValid, Algorithm: "RS256"}},
+			"", "write",
 			false, nil,
 		},
 		"public_key_with_invalid_RS256_sign": {
 			signedTokenRS256,
-			map[string]*KeyConfig{"foo": {Key: publicKeyInvalid, Algorithm: "RS256"}}, "", "",
+			map[string]*KeyConfig{"foo": {Key: publicKeyInvalid, Algorithm: "RS256"}},
+			"", "",
 			true, errors.New("failed to verify message: crypto/rsa: verification error"),
 		},
 		"public_key_with_bad_cert_RS256": {
 			signedTokenRS256,
-			map[string]*KeyConfig{"foo": {Key: publicKeyBad, Algorithm: "RS256"}}, "foo", "",
+			map[string]*KeyConfig{"foo": {Key: publicKeyBad, Algorithm: "RS256"}},
+			"foo", "",
 			true, errors.New("failed to parse PEM block containing the key"),
 		},
 	}
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-
 			_, err := verifyJWTSignature(tc.token, NewVerificationConfig(tc.keys, tc.keyID, tc.scope, nil))
 
 			if tc.wantErr {
@@ -232,7 +237,6 @@ yQjtQ8mbDOsiLLvh7wIDAQAB==
 }
 
 func TestVerifyBundleFile(t *testing.T) {
-
 	tests := map[string]struct {
 		files       [][2]string
 		readerFiles map[string]FileInfo

@@ -14,12 +14,11 @@ import (
 
 	"github.com/open-policy-agent/opa/util/test"
 
-	"github.com/open-policy-agent/opa/internal/jwx/jwa"
-	"github.com/open-policy-agent/opa/internal/jwx/jws"
+	"github.com/lestrrat-go/jwx/jwa"
+	"github.com/lestrrat-go/jwx/jws"
 )
 
 func TestGenerateSignedToken(t *testing.T) {
-
 	files := [][2]string{
 		{"/.manifest", `{"revision": "quickbrownfaux"}`},
 		{"/a/b/c/data.json", "[1,2,3]"},
@@ -70,7 +69,6 @@ func TestGenerateSignedToken(t *testing.T) {
 }
 
 func TestGenerateSignedTokenWithClaims(t *testing.T) {
-
 	files := [][2]string{
 		{"/.manifest", `{"revision": "quickbrownfaux"}`},
 		{"/a/b/d/data.json", "true"},
@@ -106,7 +104,7 @@ func TestGenerateSignedTokenWithClaims(t *testing.T) {
 
 		// create claims file
 		claimsFile := filepath.Join(rootDir, "claims.json")
-		if err := os.WriteFile(claimsFile, claimBytes, 0644); err != nil {
+		if err := os.WriteFile(claimsFile, claimBytes, 0o644); err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
 
@@ -131,14 +129,13 @@ func TestGenerateSignedTokenWithClaims(t *testing.T) {
 			t.Fatalf("Unexpected error %v", err)
 		}
 
-		if v, ok := m.GetSignatures()[0].ProtectedHeaders().Get(jws.KeyIDKey); !ok || v != keyid {
+		if v, ok := m.Signatures()[0].ProtectedHeaders().Get(jws.KeyIDKey); !ok || v != keyid {
 			t.Errorf("key id not set")
 		}
 	})
 }
 
 func TestGeneratePayload(t *testing.T) {
-
 	files := [][2]string{
 		{"/.manifest", `{"revision": "quickbrownfaux"}`},
 	}

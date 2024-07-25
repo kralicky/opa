@@ -6,12 +6,11 @@
 package bundle
 
 import (
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 
-	"github.com/open-policy-agent/opa/internal/jwx/jwa"
-	"github.com/open-policy-agent/opa/internal/jwx/jws"
+	"github.com/lestrrat-go/jwx/jwa"
+	"github.com/lestrrat-go/jwx/jws"
 )
 
 const defaultSignerID = "_default"
@@ -60,7 +59,7 @@ func (*DefaultSigner) GenerateSignedToken(files []FileInfo, sc *SigningConfig, k
 		return "", err
 	}
 
-	var headers jws.StandardHeaders
+	headers := jws.NewHeaders()
 
 	if err := headers.Set(jws.AlgorithmKey, jwa.SignatureAlgorithm(sc.Algorithm)); err != nil {
 		return "", err
@@ -72,16 +71,10 @@ func (*DefaultSigner) GenerateSignedToken(files []FileInfo, sc *SigningConfig, k
 		}
 	}
 
-	hdr, err := json.Marshal(headers)
-	if err != nil {
-		return "", err
-	}
-
-	token, err := jws.SignLiteral(payload,
+	token, err := jws.Sign(payload,
 		jwa.SignatureAlgorithm(sc.Algorithm),
 		privateKey,
-		hdr,
-		rand.Reader)
+		jws.WithHeaders(headers))
 	if err != nil {
 		return "", err
 	}

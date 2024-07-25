@@ -28,8 +28,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/open-policy-agent/opa/internal/jwx/jwa"
-	"github.com/open-policy-agent/opa/internal/jwx/jws"
+	"github.com/lestrrat-go/jwx/jwa"
+	"github.com/lestrrat-go/jwx/jws"
 	"github.com/open-policy-agent/opa/internal/jwx/jws/sign"
 	"github.com/open-policy-agent/opa/internal/providers/aws"
 	"github.com/open-policy-agent/opa/internal/uuid"
@@ -199,7 +199,6 @@ func pointsFromDER(der []byte) (R, S *big.Int, err error) {
 	data := asn1.RawValue{}
 	if _, err := asn1.Unmarshal(der, &data); err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshall the signature from DER format %v", err)
-
 	}
 	// https://docs.aws.amazon.com/kms/latest/APIReference/API_Sign.html#API_Sign_ResponseSyntax
 	// https://datatracker.ietf.org/doc/html/rfc3279#section-2.2.3
@@ -326,7 +325,7 @@ func (ap *oauth2ClientCredentialsAuthPlugin) createAuthJWT(ctx context.Context, 
 		return nil, err
 	}
 
-	var jwsHeaders []byte
+	jwsHeaders := jws.NewHeaders()
 	var signatureAlg string
 	if ap.AWSKmsKey == nil {
 		signatureAlg = ap.signingKey.Algorithm
@@ -342,19 +341,25 @@ func (ap *oauth2ClientCredentialsAuthPlugin) createAuthJWT(ctx context.Context, 
 			return nil, err
 		}
 		x5t := base64.URLEncoding.EncodeToString(bytes)
-		jwsHeaders = []byte(fmt.Sprintf(`{"typ":"JWT","alg":"%s","x5t":"%s"}`, signatureAlg, x5t))
+		jwsHeaders.Set(jws.TypeKey, "JWT")
+		jwsHeaders.Set(jws.AlgorithmKey, signatureAlg)
+		jwsHeaders.Set(jws.X509CertThumbprintKey, x5t)
 	} else {
-		jwsHeaders = []byte(fmt.Sprintf(`{"typ":"JWT","alg":"%s"}`, signatureAlg))
+		jwsHeaders.Set(jws.TypeKey, "JWT")
+		jwsHeaders.Set(jws.AlgorithmKey, signatureAlg)
 	}
 	var jwsCompact []byte
 	if ap.AWSKmsKey == nil {
-		jwsCompact, err = jws.SignLiteral(payload,
+		jwsCompact, err = jws.Sign(payload,
 			jwa.SignatureAlgorithm(signatureAlg),
 			signingKey,
-			jwsHeaders,
-			rand.Reader)
+			jws.WithHeaders(jwsHeaders))
 	} else {
-		jwsCompact, err = ap.SignWithKMS(ctx, payload, jwsHeaders)
+		jsonData, err := jwsHeaders.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		jwsCompact, err = ap.SignWithKMS(ctx, payload, jsonData)
 	}
 	if err != nil {
 		return nil, err
@@ -379,7 +384,6 @@ func (ap *oauth2ClientCredentialsAuthPlugin) mapKMSAlgToSign(alg string) (string
 
 // SignWithKMS will sign the JWT in AWS using the key stored in the supplied kmsArn
 func (ap *oauth2ClientCredentialsAuthPlugin) SignWithKMS(ctx context.Context, payload []byte, hdrBuf []byte) ([]byte, error) {
-
 	encodedHdr := base64.RawURLEncoding.EncodeToString(hdrBuf)
 	encodedPayload := base64.RawURLEncoding.EncodeToString(payload)
 	input := strings.Join(
@@ -785,7 +789,6 @@ func (acs *awsCredentialServiceChain) addService(service awsCredentialService) {
 type awsCredentialCheckErrors []*awsCredentialCheckError
 
 func (e awsCredentialCheckErrors) Error() string {
-
 	if len(e) == 0 {
 		return "no error(s)"
 	}

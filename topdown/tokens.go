@@ -7,7 +7,9 @@ package topdown
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/sha512"
@@ -18,13 +20,13 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"io"
 	"math/big"
 	"strings"
 
+	"github.com/lestrrat-go/jwx/jwk"
+	"github.com/lestrrat-go/jwx/jws"
 	"github.com/open-policy-agent/opa/ast"
-	"github.com/open-policy-agent/opa/internal/jwx/jwa"
-	"github.com/open-policy-agent/opa/internal/jwx/jwk"
-	"github.com/open-policy-agent/opa/internal/jwx/jws"
 	"github.com/open-policy-agent/opa/topdown/builtins"
 )
 
@@ -314,20 +316,26 @@ func getKeysFromCertOrJWK(certificate string) ([]verificationKey, error) {
 		return nil, fmt.Errorf("failed to extract a Key from the PEM certificate")
 	}
 
-	jwks, err := jwk.ParseString(certificate)
+	jwks, err := jwk.ParseString(certificate, jwk.WithIgnoreParseError(true))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse a JWK key (set): %w", err)
 	}
 
-	keys := make([]verificationKey, 0, len(jwks.Keys))
-	for _, k := range jwks.Keys {
-		key, err := k.Materialize()
+	keys := make([]verificationKey, 0, jwks.Len())
+	// for _, k := range jwks.Keys {
+	for i, l := 0, jwks.Len(); i < l; i++ {
+		k, ok := jwks.Get(i)
+		if !ok {
+			break
+		}
+		var key any
+		err := k.Raw(&key)
 		if err != nil {
 			return nil, err
 		}
 		keys = append(keys, verificationKey{
-			alg: k.GetAlgorithm().String(),
-			kid: k.GetKeyID(),
+			alg: k.Algorithm(),
+			kid: k.KeyID(),
 			key: key,
 		})
 	}
@@ -497,6 +505,27 @@ func builtinJWTVerifyHS512(_ BuiltinContext, operands []*ast.Term, iter func(*as
 	}
 
 	return iter(ast.NewTerm(ast.Boolean(hmac.Equal([]byte(signature), mac.Sum(nil)))))
+}
+
+func builtinJWTVerifyEdDSA(_ BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
+	// Decode the JSON Web Token
+	token, err := decodeJWT(operands[0].Value)
+	if err != nil {
+		return err
+	}
+
+	// Process Secret input
+	astSecret, err := builtins.StringOperand(operands[1].Value, 2)
+	if err != nil {
+		return err
+	}
+	secret := string(astSecret)
+
+	// Decode the signature
+	signature, err := token.decodeSignature()
+
+	ok := ed25519.Verify([]byte(secret), []byte(token.header+"."+token.payload), []byte(signature))
+	return iter(ast.NewTerm(ast.Boolean(ok)))
 }
 
 // -- Full JWT verification and decoding --
@@ -720,8 +749,10 @@ func (constraints *tokenConstraints) validAudience(aud ast.Value) bool {
 
 // JWT algorithms
 
-type tokenVerifyFunction func(key interface{}, hash crypto.Hash, payload []byte, signature []byte) error
-type tokenVerifyAsymmetricFunction func(key interface{}, hash crypto.Hash, digest []byte, signature []byte) error
+type (
+	tokenVerifyFunction           func(key interface{}, hash crypto.Hash, payload []byte, signature []byte) error
+	tokenVerifyAsymmetricFunction func(key interface{}, hash crypto.Hash, digest []byte, signature []byte) error
+)
 
 // jwtAlgorithm describes a JWS 'alg' value
 type tokenAlgorithm struct {
@@ -912,55 +943,75 @@ func (header *tokenHeader) valid() bool {
 }
 
 func commonBuiltinJWTEncodeSign(bctx BuiltinContext, inputHeaders, jwsPayload, jwkSrc string, iter func(*ast.Term) error) error {
-
 	keys, err := jwk.ParseString(jwkSrc)
 	if err != nil {
 		return err
 	}
-	key, err := keys.Keys[0].Materialize()
+	var key any
+	k, ok := keys.Get(0)
+	if !ok {
+		return fmt.Errorf("JWK set is empty")
+	}
+	err = k.Raw(&key)
 	if err != nil {
 		return err
 	}
-	if jwk.GetKeyTypeFromKey(key) != keys.Keys[0].GetKeyType() {
-		return fmt.Errorf("JWK derived key type and keyType parameter do not match")
-	}
 
-	standardHeaders := &jws.StandardHeaders{}
-	jwsHeaders := []byte(inputHeaders)
-	err = json.Unmarshal(jwsHeaders, standardHeaders)
+	headers := jws.NewHeaders()
+	err = json.Unmarshal([]byte(inputHeaders), headers)
 	if err != nil {
 		return err
 	}
-	alg := standardHeaders.GetAlgorithm()
-	if alg == jwa.Unsupported {
-		return fmt.Errorf("unknown signature algorithm")
+	alg := headers.Algorithm()
+	if alg == "" {
+		return fmt.Errorf("unsupported signature algorithm")
 	}
 
-	if (standardHeaders.Type == "" || standardHeaders.Type == headerJwt) && !json.Valid([]byte(jwsPayload)) {
+	if (headers.Type() == "" || headers.Type() == headerJwt) && !json.Valid([]byte(jwsPayload)) {
 		return fmt.Errorf("type is JWT but payload is not JSON")
 	}
 
 	// process payload and sign
+	if bctx.Seed != nil && bctx.Seed != rand.Reader {
+		switch key.(type) {
+		case *ecdsa.PrivateKey:
+			key = &dangerousFixedSeedEcdsaSigner{
+				key:  key.(*ecdsa.PrivateKey),
+				seed: bctx.Seed,
+			}
+		}
+	}
 	var jwsCompact []byte
-	jwsCompact, err = jws.SignLiteral([]byte(jwsPayload), alg, key, jwsHeaders, bctx.Seed)
+	jwsCompact, err = jws.Sign([]byte(jwsPayload), alg, key, jws.WithHeaders(headers))
 	if err != nil {
 		return err
 	}
 	return iter(ast.StringTerm(string(jwsCompact)))
+}
 
+type dangerousFixedSeedEcdsaSigner struct {
+	key  *ecdsa.PrivateKey
+	seed io.Reader
+}
+
+var _ crypto.Signer = (*dangerousFixedSeedEcdsaSigner)(nil)
+
+func (s *dangerousFixedSeedEcdsaSigner) Public() crypto.PublicKey {
+	return s.key.Public()
+}
+
+func (s *dangerousFixedSeedEcdsaSigner) Sign(_ io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
+	return s.key.Sign(s.seed, digest, opts)
 }
 
 func builtinJWTEncodeSign(bctx BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
-
 	inputHeaders := operands[0].String()
 	jwsPayload := operands[1].String()
 	jwkSrc := operands[2].String()
 	return commonBuiltinJWTEncodeSign(bctx, inputHeaders, jwsPayload, jwkSrc, iter)
-
 }
 
 func builtinJWTEncodeSignRaw(bctx BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
-
 	jwkSrc, err := builtins.StringOperand(operands[2].Value, 3)
 	if err != nil {
 		return err
@@ -1209,6 +1260,7 @@ func init() {
 	RegisterBuiltinFunc(ast.JWTVerifyHS256.Name, builtinJWTVerifyHS256)
 	RegisterBuiltinFunc(ast.JWTVerifyHS384.Name, builtinJWTVerifyHS384)
 	RegisterBuiltinFunc(ast.JWTVerifyHS512.Name, builtinJWTVerifyHS512)
+	RegisterBuiltinFunc(ast.JWTVerifyEdDSA.Name, builtinJWTVerifyEdDSA)
 	RegisterBuiltinFunc(ast.JWTDecodeVerify.Name, builtinJWTDecodeVerify)
 	RegisterBuiltinFunc(ast.JWTEncodeSignRaw.Name, builtinJWTEncodeSignRaw)
 	RegisterBuiltinFunc(ast.JWTEncodeSign.Name, builtinJWTEncodeSign)

@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/open-policy-agent/opa/internal/jwx/jwa"
+	"github.com/lestrrat-go/jwx/jwa"
 	"github.com/open-policy-agent/opa/internal/jwx/jws/sign"
 	"github.com/open-policy-agent/opa/keys"
 
@@ -106,7 +106,6 @@ func (s *SigningConfig) WithPlugin(plugin string) *SigningConfig {
 
 // GetPrivateKey returns the private key or secret from the signing config
 func (s *SigningConfig) GetPrivateKey() (interface{}, error) {
-
 	block, _ := pem.Decode([]byte(s.Key))
 	if block != nil {
 		return sign.GetSigningKey(s.Key, jwa.SignatureAlgorithm(s.Algorithm))

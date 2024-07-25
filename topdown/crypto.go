@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/open-policy-agent/opa/internal/jwx/jwk"
+	"github.com/lestrrat-go/jwx/jwk"
 
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/topdown/builtins"
@@ -88,7 +88,6 @@ func extendCertificates(certs []*x509.Certificate) []extendedCert {
 }
 
 func builtinCryptoX509ParseAndVerifyCertificates(_ BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
-
 	a := operands[0].Value
 	input, err := builtins.StringOperand(a, 1)
 	if err != nil {
@@ -141,7 +140,6 @@ var allowedKeyUsages = map[string]x509.ExtKeyUsage{
 }
 
 func builtinCryptoX509ParseAndVerifyCertificatesWithOptions(_ BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
-
 	input, err := builtins.StringOperand(operands[0].Value, 1)
 	if err != nil {
 		return err
@@ -187,7 +185,6 @@ func builtinCryptoX509ParseAndVerifyCertificatesWithOptions(_ BuiltinContext, op
 }
 
 func extractVerifyOpts(options ast.Object) (verifyOpt x509.VerifyOptions, err error) {
-
 	for _, key := range options.Keys() {
 		k, err := ast.JSON(key.Value)
 		if err != nil {
@@ -400,7 +397,6 @@ func builtinCryptoJWKFromPrivateKey(_ BuiltinContext, operands []*ast.Term, iter
 }
 
 func builtinCryptoParsePrivateKeys(_ BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
-
 	a := operands[0].Value
 	input, err := builtins.StringOperand(a, 1)
 	if err != nil {
@@ -726,7 +722,6 @@ func readCertFromFile(localCertFile string) ([]byte, error) {
 }
 
 func getTLSx509KeyPairFromString(certPemBlock []byte, keyPemBlock []byte) (*tls.Certificate, error) {
-
 	if !strings.HasPrefix(string(certPemBlock), "-----BEGIN") {
 		s, err := base64.StdEncoding.DecodeString(string(certPemBlock))
 		if err != nil {

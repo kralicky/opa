@@ -1,26 +1,13 @@
 package sign
 
 import (
+	"crypto/ed25519"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 
-	"github.com/open-policy-agent/opa/internal/jwx/jwa"
+	"github.com/lestrrat-go/jwx/jwa"
 )
-
-// New creates a signer that signs payloads using the given signature algorithm.
-func New(alg jwa.SignatureAlgorithm) (Signer, error) {
-	switch alg {
-	case jwa.RS256, jwa.RS384, jwa.RS512, jwa.PS256, jwa.PS384, jwa.PS512:
-		return newRSA(alg)
-	case jwa.ES256, jwa.ES384, jwa.ES512:
-		return newECDSA(alg)
-	case jwa.HS256, jwa.HS384, jwa.HS512:
-		return newHMAC(alg)
-	default:
-		return nil, fmt.Errorf(`unsupported signature algorithm %s`, alg)
-	}
-}
 
 // GetSigningKey returns a *rsa.PrivateKey or *ecdsa.PrivateKey typically encoded in PEM blocks of type "RSA PRIVATE KEY"
 // or "EC PRIVATE KEY" for RSA and ECDSA family of algorithms.
@@ -59,6 +46,8 @@ func GetSigningKey(key string, alg jwa.SignatureAlgorithm) (interface{}, error) 
 		return priv, nil
 	case jwa.HS256, jwa.HS384, jwa.HS512:
 		return []byte(key), nil
+	case jwa.EdDSA:
+		return ed25519.PrivateKey(key), nil
 	default:
 		return nil, fmt.Errorf("unsupported signature algorithm: %s", alg)
 	}

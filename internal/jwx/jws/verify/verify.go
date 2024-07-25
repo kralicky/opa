@@ -2,28 +2,14 @@ package verify
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 
-	"github.com/open-policy-agent/opa/internal/jwx/jwa"
+	"github.com/lestrrat-go/jwx/jwa"
 )
-
-// New creates a new JWS verifier using the specified algorithm
-// and the public key
-func New(alg jwa.SignatureAlgorithm) (Verifier, error) {
-	switch alg {
-	case jwa.RS256, jwa.RS384, jwa.RS512, jwa.PS256, jwa.PS384, jwa.PS512:
-		return newRSA(alg)
-	case jwa.ES256, jwa.ES384, jwa.ES512:
-		return newECDSA(alg)
-	case jwa.HS256, jwa.HS384, jwa.HS512:
-		return newHMAC(alg)
-	default:
-		return nil, fmt.Errorf(`unsupported signature algorithm: %s`, alg)
-	}
-}
 
 // GetSigningKey returns a *rsa.PublicKey or *ecdsa.PublicKey typically encoded in PEM blocks of type "PUBLIC KEY",
 // for RSA and ECDSA family of algorithms.
@@ -49,6 +35,8 @@ func GetSigningKey(key string, alg jwa.SignatureAlgorithm) (interface{}, error) 
 		}
 	case jwa.HS256, jwa.HS384, jwa.HS512:
 		return []byte(key), nil
+	case jwa.EdDSA:
+		return ed25519.PublicKey(key), nil
 	default:
 		return nil, fmt.Errorf("unsupported signature algorithm: %s", alg)
 	}
